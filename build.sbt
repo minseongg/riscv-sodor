@@ -28,7 +28,7 @@ def javacOptionsVersion(scalaVersion: String): Seq[String] = {
   }
 }
 
-val defaultVersions = Map("chisel3" -> "latest.release")
+val defaultVersions = Map("chisel3" -> "3.3.0")
 
 lazy val commonSettings = Seq (
   organization := "edu.berkeley.cs",
