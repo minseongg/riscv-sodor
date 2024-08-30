@@ -7,5 +7,5 @@ buildDir        := @abs_top_builddir@
 chiseldir       := @chiseldir@
 
 CXX := @CXX@
-SBT := java -Xmx4096M -Xss8M -XX:MaxPermSize=128M -jar $(srcDir)/sbt/sbt-launch.jar $(SBT_FLAGS)
+SBT := java -Xmx4096M -Xss8M -jar $(srcDir)/sbt/sbt-launch.jar $(SBT_FLAGS)
 
