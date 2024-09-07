@@ -431,8 +431,8 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    val wb_reg_inst = RegNext(mem_reg_inst)
 
-   printf("Cyc= %d [%d] pc=[%x] W[r%d=%x][%d] Op1=[r%d][%x] Op2=[r%d][%x] inst=[%x] %c%c%c DASM(%x)\n",
-      csr.io.time(31,0),
+   printf("Cyc= 0 [%d] pc=[%x] W[r%d=%x][%d] Op1=[r%d][%x] Op2=[r%d][%x] inst=[%x] %c%c%c DASM(%x)\n",
+      // csr.io.time(31,0),
       csr.io.retire,
       RegNext(mem_reg_pc),
       wb_reg_wbaddr,
