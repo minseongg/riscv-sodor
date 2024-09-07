@@ -185,13 +185,10 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
   reg_mstatus.prv := new_prv
 
   val reg_debug = RegInit(false.B)
-  val reg_dpc = Reg(UInt(conf.xprlen.W))
-  val reg_dscratch = Reg(UInt(conf.xprlen.W))
   val reg_singleStepped = Reg(Bool())
   val reset_dcsr = WireInit(0.U.asTypeOf(new DCSR()))
   reset_dcsr.xdebugver := 1
   reset_dcsr.prv := PRV.M
-  val reg_dcsr = RegInit(reset_dcsr)
 
   val system_insn = io.rw.cmd === CSR.I
   val cpu_ren = io.rw.cmd =/= CSR.N && !system_insn
@@ -219,9 +216,6 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
     CSRs.mtval -> reg_mtval,
     CSRs.mcause -> reg_mcause,
     CSRs.mhartid -> io.hartid,
-    CSRs.dcsr -> reg_dcsr.asUInt,
-    CSRs.dpc -> reg_dpc,
-    CSRs.dscratch -> reg_dscratch,
     CSRs.medeleg -> reg_medeleg)
 
   for (i <- 0 until CSR.nCtr)
@@ -271,9 +265,7 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
   val insn_wfi = system_insn && opcode(5) && priv_sufficient
 
   private def decodeAny(m: LinkedHashMap[Int,Bits]): Bool = m.map { case(k: Int, _: Bits) => io.decode.csr === k }.reduce(_||_)
-  io.decode.read_illegal := reg_mstatus.prv < io.decode.csr(9,8) || !decodeAny(read_mapping) ||
-    (io.decode.csr.inRange(CSR.firstCtr, CSR.firstCtr + CSR.nCtr) || io.decode.csr.inRange(CSR.firstCtrH, CSR.firstCtrH + CSR.nCtr)) ||
-    !reg_debug
+  io.decode.read_illegal := true
   io.decode.write_illegal := io.decode.csr(11,10).andR
   io.decode.system_illegal := reg_mstatus.prv < io.decode.csr(9,8)
 
@@ -296,13 +288,6 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
   // io.evec must be held stable for more than one cycle for the
   // microcoded code to correctly redirect the PC on exceptions
   io.evec := 0x80000004L.U
-
-  //DRET
-  when(insn_ret && io.decode.csr(10)){
-    new_prv := reg_dcsr.prv
-    reg_debug := false
-    io.evec := reg_dpc
-  }
 
   //MRET
   when (insn_ret && !io.decode.csr(10)) {
@@ -334,13 +319,6 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
 
   when (wen) {
 
-    when (decoded_addr(CSRs.dcsr)) {
-        val new_dcsr = wdata.asTypeOf(new DCSR())
-        reg_dcsr.step := new_dcsr.step
-        reg_dcsr.ebreakm := new_dcsr.ebreakm
-        if (conf.usingUser) reg_dcsr.ebreaku := new_dcsr.ebreaku
-      }
-
     when (decoded_addr(CSRs.mstatus)) {
       val new_mstatus = wdata.asTypeOf(new MStatus())
       reg_mstatus.mie := new_mstatus.mie
@@ -359,15 +337,9 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
     {
       writeCounter(i + CSR.firstMHPC, reg_hpmcounter(i), wdata)
     }
-/*    for (((e, c), i) <- (reg_hpmevent zip reg_hpmcounter) zipWithIndex) {
-      writeCounter(i + CSR.firstMHPC, c, wdata)
-      //when (decoded_addr(i + CSR.firstHPE)) { e := perfEventSets.maskEventSelector(wdata) }
-    }*/
+
     writeCounter(CSRs.mcycle, reg_time, wdata)
     writeCounter(CSRs.minstret, reg_instret, wdata)
-
-    when (decoded_addr(CSRs.dpc))      { reg_dpc := wdata }
-    when (decoded_addr(CSRs.dscratch)) { reg_dscratch := wdata }
 
     when (decoded_addr(CSRs.mepc))     { reg_mepc := (wdata(conf.xprlen-1,0) >> 2.U) << 2.U }
     when (decoded_addr(CSRs.mscratch)) { reg_mscratch := wdata }
