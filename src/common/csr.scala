@@ -131,18 +131,12 @@ class CSRFileIO(implicit val conf: SodorConfiguration) extends Bundle {
     val wdata = Input(UInt(conf.xprlen.W))
   }
 
-  val csr_stall = Output(Bool())
   val eret = Output(Bool())
-  val singleStep = Output(Bool())
 
   val decode = new Bundle {
     val csr = Input(UInt(CSR.ADDRSZ.W))
-    val read_illegal = Output(Bool())
-    val write_illegal = Output(Bool())
-    val system_illegal = Output(Bool())
   }
 
-  val status = Output(new MStatus())
   val evec = Output(UInt(conf.xprlen.W))
   val exception = Input(Bool())
   val retire = Input(Bool())
@@ -193,7 +187,7 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
   val system_insn = io.rw.cmd === CSR.I
   val cpu_ren = io.rw.cmd =/= CSR.N && !system_insn
 
-  val read_mstatus = io.status.asUInt()
+  val read_mstatus = reg_mstatus.asUInt()
   val isa_string = "I"
   val misa = BigInt(0) | isa_string.map(x => 1 << (x - 'A')).reduce(_|_)
   val impid = 0x8000 // indicates an anonymous source, which can be used
@@ -224,17 +218,6 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
     read_mapping += (i + CSR.firstMHPCH) -> reg_hpmcounter(i)
   }
 
-/*  for (((e, c), i) <- (reg_hpmevent.padTo(CSR.nHPM, 0.U)
-                       zip reg_hpmcounter.map(x => x: UInt).padTo(CSR.nHPM, 0.U)) zipWithIndex) {
-    read_mapping += (i + CSR.firstHPE) -> e // mhpmeventN
-    read_mapping += (i + CSR.firstMHPC) -> c // mhpmcounterN
-    if (conf.usingUser) read_mapping += (i + CSR.firstHPC) -> c // hpmcounterN
-    if (conf.xprlen == 32) {
-      read_mapping += (i + CSR.firstMHPCH) -> c // mhpmcounterNh
-      if (conf.usingUser) read_mapping += (i + CSR.firstHPCH) -> c // hpmcounterNh
-    }
-  }
-*/
   if (conf.usingUser) {
     read_mapping += CSRs.mcounteren -> reg_mcounteren
     read_mapping += CSRs.cycle -> reg_time
@@ -265,11 +248,6 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
   val insn_wfi = system_insn && opcode(5) && priv_sufficient
 
   private def decodeAny(m: LinkedHashMap[Int,Bits]): Bool = m.map { case(k: Int, _: Bits) => io.decode.csr === k }.reduce(_||_)
-  io.decode.read_illegal := true
-  io.decode.write_illegal := io.decode.csr(11,10).andR
-  io.decode.system_illegal := reg_mstatus.prv < io.decode.csr(9,8)
-
-  io.status := reg_mstatus
 
   io.eret := insn_call || insn_break || insn_ret
 
@@ -312,7 +290,6 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
   }
 
   io.time := reg_time
-  io.csr_stall := reg_wfi
 
 
   io.rw.rdata := Mux1H(for ((k, v) <- read_mapping) yield decoded_addr(k) -> v)
