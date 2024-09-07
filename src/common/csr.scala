@@ -124,7 +124,6 @@ object CSR
 }
 
 class CSRFileIO(implicit val conf: SodorConfiguration) extends Bundle {
-  val hartid = Input(UInt(conf.xprlen.W))
   val rw = new Bundle {
     val cmd = Input(UInt(CSR.SZ))
     val rdata = Output(UInt(conf.xprlen.W))
@@ -196,11 +195,7 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
   val read_mapping = collection.mutable.LinkedHashMap[Int,Bits](
     CSRs.mcycle -> reg_time,
     CSRs.minstret -> reg_instret,
-    CSRs.mimpid -> 0.U,
-    CSRs.marchid -> 0.U,
-    CSRs.mvendorid -> 0.U,
     CSRs.misa -> misa.U,
-    CSRs.mimpid -> impid.U,
     CSRs.mstatus -> read_mstatus,
     CSRs.mtvec -> MTVEC.U,
     CSRs.mip -> reg_mip.asUInt(),
@@ -209,7 +204,6 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
     CSRs.mepc -> reg_mepc,
     CSRs.mtval -> reg_mtval,
     CSRs.mcause -> reg_mcause,
-    CSRs.mhartid -> io.hartid,
     CSRs.medeleg -> reg_medeleg)
 
   for (i <- 0 until CSR.nCtr)
@@ -218,20 +212,8 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
     read_mapping += (i + CSR.firstMHPCH) -> reg_hpmcounter(i)
   }
 
-  if (conf.usingUser) {
-    read_mapping += CSRs.mcounteren -> reg_mcounteren
-    read_mapping += CSRs.cycle -> reg_time
-    read_mapping += CSRs.instret -> reg_instret
-  }
-
-  if (conf.xprlen == 32) {
-    read_mapping += CSRs.mcycleh -> 0.U //(reg_time >> 32)
-    read_mapping += CSRs.minstreth -> 0.U //(reg_instret >> 32)
-    if (conf.usingUser) {
-      read_mapping += CSRs.cycleh -> 0.U //(reg_time >> 32)
-      read_mapping += CSRs.instreth -> 0.U //(reg_instret >> 32)
-    }
-  }
+  read_mapping += CSRs.mcycleh -> 0.U //(reg_time >> 32)
+  read_mapping += CSRs.minstreth -> 0.U //(reg_instret >> 32)
 
   val decoded_addr = read_mapping map { case (k, v) => k -> (io.decode.csr === k) }
 
@@ -324,14 +306,6 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
     when (decoded_addr(CSRs.mtval))    { reg_mtval := wdata(conf.xprlen-1,0) }
     when (decoded_addr(CSRs.medeleg))    { reg_medeleg := wdata(conf.xprlen-1,0) }
 
-    if(conf.usingUser){
-      when (decoded_addr(CSRs.cycleh))   { reg_time := wdata }
-      when (decoded_addr(CSRs.instreth)) { reg_instret := wdata }
-    }
-  }
-
-  if (!conf.usingUser) {
-    reg_mcounteren := 0
   }
 
   def writeCounter(lo: Int, ctr: WideCounter, wdata: UInt) = {
