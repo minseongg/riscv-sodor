@@ -72,12 +72,6 @@ class MIP extends Bundle {
   val usip = Bool()
 }
 
-class PerfCounterIO(implicit val conf: SodorConfiguration) extends Bundle{
-  //val eventSel = Output(UInt(conf.xprlen.W))
-  val inc = Input(UInt(conf.xprlen.W))
-  override def cloneType = { new PerfCounterIO().asInstanceOf[this.type] }
-}
-
 object CSR
 {
   // commands
@@ -91,12 +85,6 @@ object CSR
   val R = 5.asUInt(SZ)
 
   val ADDRSZ = 12
-  val firstCtr = CSRs.cycle
-  val firstCtrH = CSRs.cycleh
-  val firstHPM = 3
-  val nCtr = 32
-  val nHPM = nCtr - firstHPM
-  val hpmWidth = 40
 }
 
 class CSRFileIO(implicit val conf: SodorConfiguration) extends Bundle {
@@ -130,16 +118,11 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
   val reg_mcause = Reg(UInt(conf.xprlen.W))
   val reg_mtval = Reg(UInt(conf.xprlen.W))
   val reg_mscratch = Reg(UInt(conf.xprlen.W))
-  val reg_mtimecmp = Reg(UInt(conf.xprlen.W))
   val reg_medeleg = Reg(UInt(conf.xprlen.W))
 
   val reg_mip = RegInit(0.U.asTypeOf(new MIP()))
   val reg_mie = RegInit(0.U.asTypeOf(new MIP()))
-  val reg_wfi = RegInit(false.B)
   val reg_mtvec = Reg(UInt(conf.xprlen.W))
-
-  val new_prv = WireInit(reg_mstatus.prv)
-  reg_mstatus.prv := new_prv
 
   val system_insn = io.rw.cmd === CSR.I
   val cpu_ren = io.rw.cmd =/= CSR.N && !system_insn
@@ -192,7 +175,6 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
   when (insn_ret && !io.decode.csr(10)) {
     reg_mstatus.mie := reg_mstatus.mpie
     reg_mstatus.mpie := true
-    new_prv := reg_mstatus.mpp
     io.evec := reg_mepc
   }
 
