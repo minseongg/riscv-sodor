@@ -138,8 +138,6 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
   val reg_wfi = RegInit(false.B)
   val reg_mtvec = Reg(UInt(conf.xprlen.W))
 
-  val reg_time = WideCounter(64)
-
   val new_prv = WireInit(reg_mstatus.prv)
   reg_mstatus.prv := new_prv
 
@@ -147,11 +145,9 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
   val cpu_ren = io.rw.cmd =/= CSR.N && !system_insn
 
   val read_mstatus = reg_mstatus.asUInt()
-  val isa_string = "I"
-  val misa = BigInt(0) | isa_string.map(x => 1 << (x - 'A')).reduce(_|_)
 
   val read_mapping = collection.mutable.LinkedHashMap[Int,Bits](
-    CSRs.misa -> misa.U,
+    CSRs.misa -> 0.U,
     CSRs.mstatus -> read_mstatus,
     CSRs.mtvec -> MTVEC.U,
     CSRs.mip -> reg_mip.asUInt(),
@@ -186,9 +182,7 @@ class CSRFile(implicit val conf: SodorConfiguration) extends Module
 
   assert(PopCount(insn_ret :: io.exception :: Nil) <= 1, "these conditions must be mutually exclusive")
 
-   when (reg_time >= reg_mtimecmp) {
-      reg_mip.mtip := true
-   }
+  reg_mip.mtip := true
 
   // io.evec must be held stable for more than one cycle for the
   // microcoded code to correctly redirect the PC on exceptions
