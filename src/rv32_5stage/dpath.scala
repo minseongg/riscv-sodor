@@ -70,7 +70,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    val exe_reg_ctrl_br_type  = RegInit(BR_N)
    val exe_reg_ctrl_op2_sel  = Reg(UInt())
    val exe_reg_ctrl_alu_fun  = Reg(UInt())
-   val exe_reg_ctrl_mext_fun = Reg(UInt())
+   val exe_reg_ctrl_mdu_fun = Reg(UInt())
    val exe_reg_ctrl_wb_sel   = Reg(UInt())
    val exe_reg_ctrl_rf_wen   = RegInit(false.B)
    val exe_reg_ctrl_mem_val  = RegInit(false.B)
@@ -209,7 +209,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    // Bypass Muxes
    val exe_alu_out  = Wire(UInt(conf.xprlen.W))
-   val exe_mext_out = Wire(UInt(conf.xprlen.W))
+   val exe_mdu_out  = Wire(UInt(conf.xprlen.W))
    val mem_wbdata   = Wire(UInt(conf.xprlen.W))
 
    val dec_op1_data = Wire(UInt(conf.xprlen.W))
@@ -222,19 +222,19 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
       dec_op1_data := MuxCase(rf_rs1_data, Array(
                            ((io.ctl.op1_sel === OP1_IMZ)) -> imm_z,
                            ((io.ctl.op1_sel === OP1_PC)) -> dec_reg_pc,
-                           ((exe_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr =/= 0.U) && exe_reg_ctrl_rf_wen) -> Mux(exe_reg_ctrl_mext_fun === MEXT_X, exe_alu_out, exe_mext_out),
+                           ((exe_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr =/= 0.U) && exe_reg_ctrl_rf_wen) -> Mux(exe_reg_ctrl_mdu_fun === MDU_X, exe_alu_out, exe_mdu_out),
                            ((mem_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr =/= 0.U) && mem_reg_ctrl_rf_wen) -> mem_wbdata,
                            ((wb_reg_wbaddr  === dec_rs1_addr) && (dec_rs1_addr =/= 0.U) &&  wb_reg_ctrl_rf_wen) -> wb_reg_wbdata
                            ))
 
       dec_op2_data := MuxCase(dec_alu_op2, Array(
-                           ((exe_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) && exe_reg_ctrl_rf_wen && (io.ctl.op2_sel === OP2_RS2)) -> Mux(exe_reg_ctrl_mext_fun === MEXT_X, exe_alu_out, exe_mext_out),
+                           ((exe_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) && exe_reg_ctrl_rf_wen && (io.ctl.op2_sel === OP2_RS2)) -> Mux(exe_reg_ctrl_mdu_fun === MDU_X, exe_alu_out, exe_mdu_out),
                            ((mem_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) && mem_reg_ctrl_rf_wen && (io.ctl.op2_sel === OP2_RS2)) -> mem_wbdata,
                            ((wb_reg_wbaddr  === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) &&  wb_reg_ctrl_rf_wen && (io.ctl.op2_sel === OP2_RS2)) -> wb_reg_wbdata
                            ))
 
       dec_rs2_data := MuxCase(rf_rs2_data, Array(
-                           ((exe_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) && exe_reg_ctrl_rf_wen) -> Mux(exe_reg_ctrl_mext_fun === MEXT_X, exe_alu_out, exe_mext_out),
+                           ((exe_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) && exe_reg_ctrl_rf_wen) -> Mux(exe_reg_ctrl_mdu_fun === MDU_X, exe_alu_out, exe_mdu_out),
                            ((mem_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) && mem_reg_ctrl_rf_wen) -> mem_wbdata,
                            ((wb_reg_wbaddr  === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) &&  wb_reg_ctrl_rf_wen) -> wb_reg_wbdata
                            ))
@@ -249,9 +249,6 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
       dec_rs2_data := rf_rs2_data
       dec_op2_data := dec_alu_op2
    }
-
-   dontTouch(dec_op1_data)
-   dontTouch(dec_op2_data)
 
    when (((io.ctl.dec_stall && !io.ctl.full_stall) || io.ctl.pipeline_kill) && !(io.dat.exe_muldiv_busy))
    {
@@ -277,7 +274,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
       exe_reg_rs2_data      := dec_rs2_data
       exe_reg_ctrl_op2_sel  := io.ctl.op2_sel
       exe_reg_ctrl_alu_fun  := io.ctl.alu_fun
-      exe_reg_ctrl_mext_fun := io.ctl.mext_fun
+      exe_reg_ctrl_mdu_fun  := io.ctl.mdu_fun
       exe_reg_ctrl_wb_sel   := io.ctl.wb_sel
 
       when (io.ctl.dec_kill)
@@ -333,13 +330,13 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    // MulDiv
    val muldiv = Module(new MulDiv())
-   muldiv.io.req.valid := exe_reg_valid && exe_reg_ctrl_mext_fun =/= MEXT_X
-   muldiv.io.req.bits.fn := exe_reg_ctrl_mext_fun
+   muldiv.io.req.valid := exe_reg_valid && exe_reg_ctrl_mdu_fun =/= MDU_X
+   muldiv.io.req.bits.fn := exe_reg_ctrl_mdu_fun
    muldiv.io.req.bits.in1 := exe_alu_op1
    muldiv.io.req.bits.in2 := exe_alu_op2
    muldiv.io.kill := io.ctl.pipeline_kill
 
-   exe_mext_out := muldiv.io.resp.bits.data
+   exe_mdu_out := muldiv.io.resp.bits.data
    muldiv.io.resp.ready := true.B
 
    // Branch/Jump Target Calculation
@@ -348,11 +345,6 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    exe_jump_reg_target := exe_adder_out
 
    val exe_pc_plus4    = (exe_reg_pc + 4.U)(conf.xprlen-1,0)
-
-   dontTouch(mem_reg_valid)
-   dontTouch(mem_reg_pc)
-   dontTouch(mem_reg_inst)
-   dontTouch(mem_reg_alu_out)
 
    when (io.ctl.pipeline_kill)
    {
@@ -367,7 +359,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
       mem_reg_valid         := exe_reg_valid
       mem_reg_pc            := exe_reg_pc
       mem_reg_inst          := exe_reg_inst
-      mem_reg_alu_out       := Mux((exe_reg_ctrl_mext_fun =/= MEXT_X), exe_mext_out, Mux((exe_reg_ctrl_wb_sel === WB_PC4), exe_pc_plus4, exe_alu_out))
+      mem_reg_alu_out       := Mux((exe_reg_ctrl_mdu_fun =/= MDU_X), exe_mdu_out, Mux((exe_reg_ctrl_wb_sel === WB_PC4), exe_pc_plus4, exe_alu_out))
       mem_reg_wbaddr        := exe_reg_wbaddr
       mem_reg_rs1_addr      := exe_reg_rs1_addr
       mem_reg_rs2_addr      := exe_reg_rs2_addr

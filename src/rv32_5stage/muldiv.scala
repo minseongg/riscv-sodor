@@ -48,14 +48,14 @@ class MulDiv() extends Module {
   val Y = true.B
   val N = false.B
   val decodeTable = Seq(
-    MEXT_MUL    -> Seq(Y, N, N, N),
-    MEXT_MULH   -> Seq(Y, Y, Y, Y),
-    MEXT_MULHU  -> Seq(Y, Y, N, N),
-    MEXT_MULHSU -> Seq(Y, Y, Y, N),
-    MEXT_DIV    -> Seq(N, N, Y, Y),
-    MEXT_REM    -> Seq(N, Y, Y, Y),
-    MEXT_DIVU   -> Seq(N, N, N, N),
-    MEXT_REMU   -> Seq(N, Y, N, N)
+    MDU_MUL    -> Seq(Y, N, N, N),
+    MDU_MULH   -> Seq(Y, Y, Y, Y),
+    MDU_MULHU  -> Seq(Y, Y, N, N),
+    MDU_MULHSU -> Seq(Y, Y, Y, N),
+    MDU_DIV    -> Seq(N, N, Y, Y),
+    MDU_REM    -> Seq(N, Y, Y, Y),
+    MDU_DIVU   -> Seq(N, N, N, N),
+    MDU_REMU   -> Seq(N, Y, N, N)
   )
   
   val cmdMul     = MuxLookup(io.req.bits.fn, N, decodeTable.map(x => (x._1, x._2(0))))
@@ -104,7 +104,7 @@ class MulDiv() extends Module {
     val nextMplierSign = count === (mulw-2).U && neg_out
 
     val eOutMask = ((BigInt(-1) << mulw).S >> (count)(log2Up(mulw)-1,0))(mulw-1,0)
-    val eOut = false.B
+    val eOut = count =/= (mulw).U && count =/= 0.U && !isHi && (mplier & ~eOutMask) === 0.U
     val eOutRes = (mulReg >> (mulw.U - count)(log2Up(mulw)-1,0))
     val nextMulReg1 = Cat(nextMulReg(2*mulw,mulw), Mux(eOut, eOutRes, nextMulReg)(mulw-1,0))
     remainder := Cat(nextMulReg1 >> w, nextMplierSign, nextMulReg1(w-1,0))
