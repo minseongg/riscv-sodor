@@ -30,6 +30,7 @@ class CtlToDatIo extends Bundle()
    val op1_sel    = Output(UInt(2.W))
    val op2_sel    = Output(UInt(3.W))
    val alu_fun    = Output(UInt(4.W))
+   val mext_fun   = Output(UInt(4.W))
    val wb_sel     = Output(UInt(2.W))
    val rf_wen     = Output(Bool())
    val mem_val    = Output(Bool())
@@ -201,7 +202,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
          exe_reg_exception   := dec_exception
       }
    }
-   .elsewhen (stall && !full_stall)
+   .elsewhen (stall && !full_stall && !(io.dat.exe_muldiv_busy))
    {
       // kill exe stage
       exe_reg_wbaddr      := 0.U
@@ -210,9 +211,18 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
       exe_reg_exception   := false.B
    }
 
-   mem_reg_wbaddr      := exe_reg_wbaddr
+   when (io.dat.exe_muldiv_busy)
+   {
+      mem_reg_wbaddr := 0.U
+      mem_reg_ctrl_rf_wen := false.B
+   }
+   .otherwise
+   {
+      mem_reg_wbaddr      := exe_reg_wbaddr
+      mem_reg_ctrl_rf_wen := exe_reg_ctrl_rf_wen
+   }
+
    wb_reg_wbaddr       := mem_reg_wbaddr
-   mem_reg_ctrl_rf_wen := exe_reg_ctrl_rf_wen
    wb_reg_ctrl_rf_wen  := mem_reg_ctrl_rf_wen
 
    val exe_inst_is_load = RegInit(false.B)
@@ -228,10 +238,11 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    // stalls on I$ misses and on hazards
    if (USE_FULL_BYPASSING)
    {
-      // stall for load-use hazard
+      // stall for load-use and muldiv structural hazard
       stall := ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs1_addr) && (exe_reg_wbaddr =/= 0.U) && dec_rs1_oen) ||
                ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs2_addr) && (exe_reg_wbaddr =/= 0.U) && dec_rs2_oen) ||
-               (exe_reg_is_csr)
+               (exe_reg_is_csr) ||
+               (io.dat.exe_muldiv_busy)
    }
    else
    {
@@ -244,7 +255,8 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
                ((wb_reg_wbaddr  === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) &&  wb_reg_ctrl_rf_wen && dec_rs2_oen) ||
                ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs1_addr) && (exe_reg_wbaddr =/= 0.U) && dec_rs1_oen) ||
                ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs2_addr) && (exe_reg_wbaddr =/= 0.U) && dec_rs2_oen) ||
-               ((exe_reg_is_csr))
+               ((exe_reg_is_csr)) ||
+               ((io.dat.exe_muldiv_busy))
    }
 
 
@@ -262,6 +274,7 @@ class CtlPath(implicit val conf: SodorConfiguration) extends Module
    io.ctl.op1_sel    := cs_op1_sel
    io.ctl.op2_sel    := cs_op2_sel
    io.ctl.alu_fun    := cs_alu_fun
+   io.ctl.mext_fun   := cs_mext_fun
    io.ctl.wb_sel     := cs_wb_sel
    io.ctl.rf_wen     := cs_rf_wen
 
