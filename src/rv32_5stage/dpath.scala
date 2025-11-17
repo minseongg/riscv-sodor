@@ -393,7 +393,6 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    csr.io.rw.wdata := mem_reg_alu_out
    csr.io.rw.cmd   := mem_reg_ctrl_csr_cmd
 
-   csr.io.retire    := wb_reg_valid
    csr.io.exception := io.ctl.mem_exception
    csr.io.pc        := mem_reg_pc
    exception_target := csr.io.evec
