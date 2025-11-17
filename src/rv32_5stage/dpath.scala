@@ -401,10 +401,6 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
    io.dat.csr_eret := csr.io.eret
    // TODO replay? stall?
 
-   // Add your own uarch counters here!
-   csr.io.counters.foreach(_.inc := false.B)
-
-
    // WB Mux
    mem_wbdata := MuxCase(mem_reg_alu_out, Array(
                   (mem_reg_ctrl_wb_sel === WB_ALU) -> mem_reg_alu_out,
@@ -454,9 +450,7 @@ class DatPath(implicit val conf: SodorConfiguration) extends Module
 
    val wb_reg_inst = RegNext(mem_reg_inst)
 
-   printf("Cyc= %d [%d] pc=[%x] W[r%d=%x][%d] Op1=[r%d][%x] Op2=[r%d][%x] inst=[%x] %c%c%c DASM(%x)\n",
-      csr.io.time(31,0),
-      csr.io.retire,
+   printf("pc=[%x] W[r%d=%x][%d] Op1=[r%d][%x] Op2=[r%d][%x] inst=[%x] %c%c%c DASM(%x)\n",
       RegNext(mem_reg_pc),
       wb_reg_wbaddr,
       wb_reg_wbdata,
