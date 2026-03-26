@@ -49,8 +49,8 @@ class Tracer:
     def print_results(self):
         print("#----------Stats--------------")
         print("#")
-        print("#   CPI    : {:2.2f}".format(float(self.cycles) / self.inst_count))
-        print("#   IPC    : {:2.2f}".format(float(self.inst_count) / self.cycles))
+        print("#   CPI    : {:2.3f}".format(float(self.cycles) / self.inst_count))
+        print("#   IPC    : {:2.3f}".format(float(self.inst_count) / self.cycles))
         print("#   cycles : {}".format(self.cycles))
         print("#")
         print("#   Bubbles      : {:2.3f} %".format(float(self.bubble_count) / self.cycles * 100))
@@ -72,7 +72,7 @@ def main():
                 tracer.retire(inst)
             else:
                 tracer.bubble()
-        print(line)
+        # print(line)
 
     tracer.print_results()
 

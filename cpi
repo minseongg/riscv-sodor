@@ -1,0 +1,9 @@
+./emulator/rv32_5stage/emulator-debug ./install/riscv-bmarks/rv32im/aes.riscv +max-cycles=10000000 > log.txt 2>&1 && python3 emulator/common/tracer.py < log.txt
+./emulator/rv32_5stage/emulator-debug ./install/riscv-bmarks/rv32im/coremark.riscv +max-cycles=10000000 > log.txt 2>&1 && python3 emulator/common/tracer.py < log.txt
+./emulator/rv32_5stage/emulator-debug ./install/riscv-bmarks/rv32im/gemm.riscv +max-cycles=10000000 > log.txt 2>&1 && python3 emulator/common/tracer.py < log.txt
+./emulator/rv32_5stage/emulator-debug ./install/riscv-bmarks/rv32im/gemm-block.riscv +max-cycles=10000000 > log.txt 2>&1 && python3 emulator/common/tracer.py < log.txt
+./emulator/rv32_5stage/emulator-debug ./install/riscv-bmarks/rv32im/ellpack.riscv +max-cycles=10000000 > log.txt 2>&1 && python3 emulator/common/tracer.py < log.txt
+./emulator/rv32_5stage/emulator-debug ./install/riscv-bmarks/rv32im/kmp.riscv +max-cycles=10000000 > log.txt 2>&1 && python3 emulator/common/tracer.py < log.txt
+./emulator/rv32_5stage/emulator-debug ./install/riscv-bmarks/rv32im/nw.riscv +max-cycles=10000000 > log.txt 2>&1 && python3 emulator/common/tracer.py < log.txt
+./emulator/rv32_5stage/emulator-debug ./install/riscv-bmarks/rv32im/queue.riscv +max-cycles=10000000 > log.txt 2>&1 && python3 emulator/common/tracer.py < log.txt
+./emulator/rv32_5stage/emulator-debug ./install/riscv-bmarks/rv32im/radix.riscv +max-cycles=10000000 > log.txt 2>&1 && python3 emulator/common/tracer.py < log.txt
